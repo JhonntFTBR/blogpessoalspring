@@ -3,15 +3,16 @@ package com.generation.blogpessoal.service;
 import java.nio.charset.Charset;
 import java.util.Optional;
 
+import com.generation.blogpessoal.model.Usuario;
+import com.generation.blogpessoal.model.UsuarioLogin;
+import com.generation.blogpessoal.repository.UsuarioRepository;
+
 import org.apache.commons.codec.binary.Base64;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-import com.generation.blogpessoal.model.Usuario;
-import com.generation.blogpessoal.model.UsuarioLogin;
-import com.generation.blogpessoal.repository.UsuarioRepository;
 
 /**
  *  A Classe UsuarioService implementa as regras de negócio do Recurso Usuario.
@@ -87,12 +88,23 @@ public class UsuarioService {
 	public Optional<Usuario> atualizarUsuario(Usuario usuario) {
 		
 		if(usuarioRepository.findById(usuario.getId()).isPresent()) {
-			Optional<Usuario> buscaUsuario =  usuarioRepository.findByUsuario(usuario.getUsuario());
-			if((buscaUsuario.isPresent()) && (buscaUsuario.get().getId() != usuario.getId()))
-				throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"O usuário já existe", null);
 			
 			/**
-		 	* Se o Usuário existir no Banco de Dados, a senha será criptografada
+			 * Cria um Objeto Optional com o resultado do método findById
+			 */
+			Optional<Usuario> buscaUsuario = usuarioRepository.findByUsuario(usuario.getUsuario());
+			
+			/**
+			 * Se o Usuário existir no Banco de dados e o Id do Usuário encontrado no Banco for 
+			 * diferente do usuário do Id do Usuário enviado na requisição, a Atualização dos 
+			 * dados do Usuário não pode ser realizada.
+			 */
+			if ( (buscaUsuario.isPresent()) && ( buscaUsuario.get().getId() != usuario.getId()))
+				throw new ResponseStatusException(
+						HttpStatus.BAD_REQUEST, "Usuário já existe!", null);
+
+			/**
+		 	* Se o Usuário existir no Banco de Dados e o Id for o mesmo, a senha será criptografada
 		 	* através do Método criptografarSenha.
 		 	*/
 			usuario.setSenha(criptografarSenha(usuario.getSenha()));
@@ -193,7 +205,9 @@ public class UsuarioService {
 	* 
 	*/
 	private String criptografarSenha(String senha) {
+
 		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+		
 		return encoder.encode(senha);
 
 	}
@@ -213,8 +227,10 @@ public class UsuarioService {
 	* 
 	*/
 	private boolean compararSenhas(String senhaDigitada, String senhaBanco) {
-				BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-				return encoder.matches(senhaDigitada, senhaBanco);
+		
+		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+		
+		return encoder.matches(senhaDigitada, senhaBanco);
 
 	}
 
@@ -248,6 +264,7 @@ public class UsuarioService {
 	* será reconhecido.
 	*/
 	private String gerarBasicToken(String usuario, String senha) {
+
 		String token = usuario + ":" + senha;
 		byte[] tokenBase64 = Base64.encodeBase64(token.getBytes(Charset.forName("US-ASCII")));
 		return "Basic " + new String(tokenBase64);
